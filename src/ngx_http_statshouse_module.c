@@ -56,6 +56,8 @@ static char *      ngx_http_statshouse_server_slot(ngx_conf_t *cf, ngx_command_t
 
 static ngx_int_t   ngx_http_statshouse_handler(ngx_http_request_t *request);
 
+static void        ngx_http_statshouse_exit_process(ngx_cycle_t *cycle);
+
 
 static ngx_command_t  ngx_http_statshouse_commands[] = {
     { ngx_string("statshouse_server"),
@@ -329,7 +331,7 @@ ngx_module_t  ngx_http_statshouse_module = {
     NULL,                                    /* init process */
     NULL,                                    /* init thread */
     NULL,                                    /* exit thread */
-    NULL,                                    /* exit process */
+    ngx_http_statshouse_exit_process,        /* exit process */
     NULL,                                    /* exit master */
     NGX_MODULE_V1_PADDING
 };
@@ -1277,3 +1279,8 @@ ngx_http_statshouse_flush_server(ngx_cycle_t *cycle, ngx_http_core_srv_conf_t *s
     return ngx_http_statshouse_flush_ctx(cycle, ctx, pool);
 }
 
+static void
+ngx_http_statshouse_exit_process(ngx_cycle_t *cycle)
+{
+    ngx_statshouse_aggregate_exit_process_handler(cycle);
+}

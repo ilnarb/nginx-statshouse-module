@@ -24,12 +24,16 @@ typedef struct {
 
 static void  ngx_statshouse_aggregate_timer_handler(ngx_event_t *ev);
 static void  ngx_statshouse_aggregate_timer(ngx_statshouse_aggregate_t *aggregate, ngx_msec_t now);
+static void  ngx_statshouse_aggregate_exit_process(ngx_cycle_t *cycle);
 
 static void  ngx_statshouse_aggregate_insert_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 static ngx_statshouse_aggregate_stat_t  *ngx_statshouse_aggregate_lookup(ngx_statshouse_aggregate_t *server,
     uint32_t hash, size_t size, ngx_int_t type);
 static void  *ngx_statshouse_aggregate_alloc(ngx_statshouse_aggregate_t *aggregate, size_t size);
 static void  ngx_statshouse_aggregate_free(ngx_statshouse_aggregate_t *aggregate, void *ptr, size_t size);
+
+
+static ngx_array_t *ngx_statshouse_aggregates = NULL;
 
 
 ngx_int_t
@@ -54,6 +58,22 @@ ngx_statshouse_aggregate_init(ngx_statshouse_aggregate_t *aggregate, ngx_pool_t 
 
     aggregate->timer_connection.fd = -1;
     aggregate->timer_connection.data = aggregate;
+
+    /* Register aggregate for process exit handler */
+    if (ngx_statshouse_aggregates == NULL) {
+        ngx_statshouse_aggregates = ngx_array_create(pool, 4, sizeof(ngx_statshouse_aggregate_t *));
+        if (ngx_statshouse_aggregates == NULL) {
+            return NGX_ERROR;
+        }
+    }
+
+    {
+        ngx_statshouse_aggregate_t **agg = ngx_array_push(ngx_statshouse_aggregates);
+        if (agg == NULL) {
+            return NGX_ERROR;
+        }
+        *agg = aggregate;
+    }
 
     return NGX_OK;
 }
@@ -287,6 +307,31 @@ ngx_statshouse_aggregate_timer(ngx_statshouse_aggregate_t *aggregate, ngx_msec_t
 
 
 static void
+ngx_statshouse_aggregate_exit_process(ngx_cycle_t *cycle)
+{
+    ngx_statshouse_aggregate_t  **aggregates;
+    ngx_uint_t                   i;
+    ngx_msec_t                   now;
+
+    if (ngx_statshouse_aggregates == NULL) {
+        return;
+    }
+
+    now = ngx_current_msec;
+    aggregates = ngx_statshouse_aggregates->elts;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+        "statshouse aggregate exit process: flushing all aggregates");
+
+    for (i = 0; i < ngx_statshouse_aggregates->nelts; i++) {
+        if (aggregates[i] != NULL) {
+            ngx_statshouse_aggregate_process(aggregates[i], now);
+        }
+    }
+}
+
+
+static void
 ngx_statshouse_aggregate_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
 {
@@ -419,4 +464,11 @@ ngx_statshouse_aggregate_free(ngx_statshouse_aggregate_t *aggregate, void *ptr, 
     }
 
     aggregate->alloc.last += size;
+}
+
+
+void
+ngx_statshouse_aggregate_exit_process_handler(ngx_cycle_t *cycle)
+{
+    ngx_statshouse_aggregate_exit_process(cycle);
 }
