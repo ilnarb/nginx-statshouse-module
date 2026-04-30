@@ -95,5 +95,6 @@ ngx_int_t  ngx_statshouse_flush_after_request(ngx_statshouse_server_t *server);
 ngx_int_t  ngx_statshouse_stat_compile(ngx_statshouse_conf_t *conf, ngx_statshouse_stat_t *stats, ngx_int_t max,
     ngx_statshouse_complex_value_pt complex, void *complex_ctx, ngx_log_t *log);
 
+ngx_int_t  ngx_statshouse_exit_handler(ngx_statshouse_server_t *server);
 
 #endif

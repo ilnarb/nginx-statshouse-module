@@ -41,6 +41,5 @@ typedef struct {
 ngx_int_t  ngx_statshouse_aggregate_init(ngx_statshouse_aggregate_t *aggregate, ngx_pool_t *pool);
 ngx_int_t  ngx_statshouse_aggregate(ngx_statshouse_aggregate_t *aggregate, ngx_statshouse_stat_t *stat, ngx_msec_t now);
 ngx_int_t  ngx_statshouse_aggregate_process(ngx_statshouse_aggregate_t *aggregate, ngx_msec_t now);
-void       ngx_statshouse_aggregate_exit_process_handler(ngx_cycle_t *cycle);
 
 #endif

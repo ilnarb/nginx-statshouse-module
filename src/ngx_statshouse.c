@@ -665,3 +665,16 @@ ngx_statshouse_aggregate_handler(ngx_statshouse_stat_t *stat, void *ctx)
 
     return ngx_statshouse_send_to_buffer(server, stat);
 }
+
+ngx_int_t
+ngx_statshouse_exit_handler(ngx_statshouse_server_t *server)
+{
+    ngx_msec_t now;
+
+    if (server && server->aggregate) {
+        now = ngx_current_msec;
+        return ngx_statshouse_aggregate_process(server->aggregate, now);
+    }
+
+    return NGX_OK;
+}

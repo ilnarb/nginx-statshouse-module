@@ -1114,5 +1114,20 @@ ngx_stream_statshouse_flush_server(ngx_cycle_t *cycle, ngx_stream_core_srv_conf_
 static void
 ngx_stream_statshouse_exit_process(ngx_cycle_t *cycle)
 {
-    ngx_statshouse_aggregate_exit_process_handler(cycle);
+    ngx_stream_statshouse_main_conf_t   *smcf;
+    ngx_statshouse_server_t          **servers;
+    ngx_uint_t                         i;
+
+    smcf = ngx_stream_cycle_get_module_main_conf(cycle, ngx_stream_statshouse_module);
+    if (smcf->servers == NULL || smcf->confs == NULL) {
+        return;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+        "statshouse stream: flushing all aggregates on exit process");
+
+    servers = smcf->servers->elts;
+    for (i = 0; i < smcf->servers->nelts; i++) {
+        ngx_statshouse_exit_handler(servers[i]);
+    }
 }
