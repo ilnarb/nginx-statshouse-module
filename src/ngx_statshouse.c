@@ -242,10 +242,6 @@ ngx_statshouse_flush(ngx_statshouse_server_t *server)
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, server->log, 0,
             "statshouse send %z bytes: %V", n, &server->addr.addrs->name);
 
-        if (ngx_terminate || ngx_exiting) {
-            ngx_statshouse_disconnect(server);
-        }
-
         server->buffer->last = server->buffer->pos;
         return NGX_OK;
     }
@@ -671,10 +667,17 @@ ngx_statshouse_exit_handler(ngx_statshouse_server_t *server)
 {
     ngx_msec_t now;
 
-    if (server && server->aggregate) {
-        now = ngx_current_msec;
-        return ngx_statshouse_aggregate_process(server->aggregate, now);
+    if (server == NULL) {
+        return NGX_OK;
     }
+
+    if (server->aggregate) {
+        now = ngx_current_msec;
+        ngx_statshouse_aggregate_process(server->aggregate, now);
+    }
+
+    ngx_statshouse_flush(server);
+    ngx_statshouse_disconnect(server);
 
     return NGX_OK;
 }
