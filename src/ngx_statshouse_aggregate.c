@@ -76,6 +76,8 @@ ngx_statshouse_aggregate(ngx_statshouse_aggregate_t *aggregate, ngx_statshouse_s
         ngx_log_debug0(NGX_LOG_DEBUG_CORE, aggregate->log, 0,
             "statshouse decline aggregate, worker exiting");
 
+        ngx_log_error(NGX_LOG_NOTICE, aggregate->log, 0, "statshouse decline aggregate, worker exiting");
+
         return NGX_DECLINED;
     }
 
@@ -192,6 +194,8 @@ ngx_statshouse_aggregate_process(ngx_statshouse_aggregate_t *aggregate, ngx_msec
     if (ngx_queue_empty(&aggregate->queue)) {
         ngx_log_debug0(NGX_LOG_DEBUG_CORE, aggregate->log, 0,
             "statshouse aggregate, empty queue");
+        if (ngx_terminate || ngx_exiting)
+            ngx_log_error(NGX_LOG_NOTICE, aggregate->log, 0, "statshouse aggregate, empty queue");
 
         return NGX_DECLINED;
     }
@@ -199,6 +203,7 @@ ngx_statshouse_aggregate_process(ngx_statshouse_aggregate_t *aggregate, ngx_msec
     if (ngx_terminate || ngx_exiting) {
         ngx_log_debug0(NGX_LOG_DEBUG_CORE, aggregate->log, 0,
             "statshouse aggregate, flush all queue");
+        ngx_log_error(NGX_LOG_NOTICE, aggregate->log, 0, "statshouse aggregate, flush all queue");
 
         flush = 1;
     }
@@ -229,6 +234,8 @@ ngx_statshouse_aggregate_process(ngx_statshouse_aggregate_t *aggregate, ngx_msec
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, aggregate->log, 0,
         "statshouse aggregate, flush %d stats", count);
+    if (ngx_terminate || ngx_exiting)
+        ngx_log_error(NGX_LOG_NOTICE, aggregate->log, 0, "statshouse aggregate, flush %d stats", count);
 
     if (count == 0) {
         return NGX_DECLINED;

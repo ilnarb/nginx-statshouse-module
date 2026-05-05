@@ -124,6 +124,9 @@ ngx_statshouse_connect(ngx_statshouse_server_t *server)
         return NGX_ERROR;
     }
 
+    if (ngx_terminate || ngx_exiting)
+        ngx_log_error(NGX_LOG_NOTICE, server->log, 0, "ngx_statshouse_connect(%p)", server);
+
     s = ngx_socket(server->addr.addrs->sockaddr->sa_family, SOCK_DGRAM, 0);
     if (s == (ngx_socket_t) -1) {
         return NGX_ERROR;
@@ -179,6 +182,8 @@ static void
 ngx_statshouse_disconnect(ngx_statshouse_server_t *server)
 {
     if (server->connection) {
+        if (ngx_terminate || ngx_exiting)
+            ngx_log_error(NGX_LOG_NOTICE, server->log, 0, "ngx_statshouse_disconnect(%p)", server);
         ngx_close_connection(server->connection);
         server->connection = NULL;
     }
@@ -203,6 +208,9 @@ ngx_statshouse_timer(ngx_statshouse_server_t *server)
         return;
     }
 
+    if (ngx_terminate || ngx_exiting)
+        ngx_log_error(NGX_LOG_NOTICE, server->log, 0, "ngx_statshouse_timer(%p): %d", server, (int)ngx_buf_size(server->buffer));
+
     if (ngx_buf_size(server->buffer) == 0) {
         return;
     }
@@ -221,6 +229,9 @@ ngx_statshouse_flush(ngx_statshouse_server_t *server)
     ngx_int_t  retry, retries_max = 1;
     ngx_int_t  rc;
     ssize_t    n;
+
+    if (ngx_terminate || ngx_exiting)
+        ngx_log_error(NGX_LOG_NOTICE, server->log, 0, "ngx_statshouse_flush(%p): %d", server, (int)ngx_buf_size(server->buffer));
 
     if (ngx_buf_size(server->buffer) == 0) {
         return NGX_DECLINED;
@@ -241,6 +252,8 @@ ngx_statshouse_flush(ngx_statshouse_server_t *server)
 
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, server->log, 0,
             "statshouse send %z bytes: %V", n, &server->addr.addrs->name);
+        if (ngx_terminate || ngx_exiting)
+            ngx_log_error(NGX_LOG_NOTICE, server->log, 0, "statshouse send %z bytes: %V", n, &server->addr.addrs->name);
 
         if (ngx_terminate || ngx_exiting) {
             ngx_statshouse_disconnect(server);
@@ -272,6 +285,9 @@ ngx_statshouse_send_to_buffer(ngx_statshouse_server_t *server, ngx_statshouse_st
 
     size = ngx_statshouse_tl_metrics_len(stat, 1);
 
+    if (ngx_terminate || ngx_exiting)
+        ngx_log_error(NGX_LOG_NOTICE, server->log, 0, "ngx_statshouse_send_to_buffer(%p, %p): %z", server, stat, size);
+
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, server->log, 0,
         "statshouse build %z stat", size);
 
@@ -289,6 +305,9 @@ ngx_statshouse_send_to_buffer(ngx_statshouse_server_t *server, ngx_statshouse_st
     ngx_statshouse_tl_metrics(server->buffer, stat, 1);
     ngx_statshouse_timer(server);
 
+    if (ngx_terminate || ngx_exiting)
+        ngx_log_error(NGX_LOG_NOTICE, server->log, 0, "statshouse append new stat %z bytes, left %z", size, ngx_statshouse_server_buffer_left(server));
+
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, server->log, 0,
         "statshouse append new stat %z bytes, left %z",
         size, ngx_statshouse_server_buffer_left(server));
@@ -301,6 +320,9 @@ ngx_int_t
 ngx_statshouse_send(ngx_statshouse_server_t *server, ngx_statshouse_stat_t *stat)
 {
     ngx_int_t  rc;
+
+    if (ngx_terminate || ngx_exiting)
+        ngx_log_error(NGX_LOG_NOTICE, server->log, 0, "ngx_statshouse_send(%p, %p)", server, stat);
 
     if (server->aggregate) {
         rc = ngx_statshouse_aggregate(server->aggregate, stat, ngx_current_msec);
@@ -659,6 +681,9 @@ ngx_statshouse_aggregate_handler(ngx_statshouse_stat_t *stat, void *ctx)
 {
     ngx_statshouse_server_t  *server = ctx;
 
+    if (ngx_terminate || ngx_exiting)
+        ngx_log_error(NGX_LOG_NOTICE, server->log, 0, "ngx_statshouse_aggregate_handler(%p, %p)", stat, ctx);
+
     if (stat == NULL) {
         return ngx_statshouse_flush(server);
     }
@@ -670,6 +695,8 @@ ngx_int_t
 ngx_statshouse_exit_handler(ngx_statshouse_server_t *server)
 {
     ngx_msec_t now;
+
+    ngx_log_error(NGX_LOG_NOTICE, server->log, 0, "ngx_statshouse_exit_handler(%p)", stat);
 
     if (server && server->aggregate) {
         now = ngx_current_msec;
