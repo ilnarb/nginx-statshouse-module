@@ -50,7 +50,9 @@ ngx_statshouse_aggregate_init(ngx_statshouse_aggregate_t *aggregate, ngx_pool_t 
     aggregate->timer_event.handler = ngx_statshouse_aggregate_timer_handler;
     aggregate->timer_event.log = aggregate->log;
     aggregate->timer_event.data = &aggregate->timer_connection;
-    aggregate->timer_event.cancelable = 1;
+    /* keep the timer alive on graceful shutdown, so accumulated
+     * values are flushed instead of waiting for the exit handler */
+    aggregate->timer_event.cancelable = 0;
 
     aggregate->timer_connection.fd = -1;
     aggregate->timer_connection.data = aggregate;
@@ -75,6 +77,11 @@ ngx_statshouse_aggregate(ngx_statshouse_aggregate_t *aggregate, ngx_statshouse_s
     if (ngx_terminate || ngx_exiting) {
         ngx_log_debug0(NGX_LOG_DEBUG_CORE, aggregate->log, 0,
             "statshouse decline aggregate, worker exiting");
+
+        /* timers are cancelable and already removed by nginx on shutdown,
+         * flush accumulated values right now instead of waiting
+         * for the exit handler */
+        ngx_statshouse_aggregate_process(aggregate, now);
 
         return NGX_DECLINED;
     }
