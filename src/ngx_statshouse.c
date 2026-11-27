@@ -264,7 +264,8 @@ ngx_statshouse_flush_after_request(ngx_statshouse_server_t *server)
 static ngx_int_t
 ngx_statshouse_send_to_buffer(ngx_statshouse_server_t *server, ngx_statshouse_stat_t *stat)
 {
-    size_t  size;
+    ngx_int_t  rc;
+    size_t     size;
 
     size = ngx_statshouse_tl_metrics_len(stat, 1);
 
@@ -272,7 +273,10 @@ ngx_statshouse_send_to_buffer(ngx_statshouse_server_t *server, ngx_statshouse_st
         "statshouse build %z stat", size);
 
     if (ngx_statshouse_server_buffer_left(server) < size) {
-        ngx_statshouse_flush(server);
+        rc = ngx_statshouse_flush(server);
+        if (rc != NGX_OK) {
+            return rc;
+        }
 
         if (ngx_statshouse_server_buffer_left(server) < size) {
             ngx_log_error(NGX_LOG_WARN, server->log, 0,
