@@ -229,7 +229,17 @@ ngx_statshouse_aggregate_process(ngx_statshouse_aggregate_t *aggregate, ngx_msec
         rc = aggregate->handler(&astat->stat, aggregate->ctx);
         if (rc == NGX_OK) {
             ++count;
+
+        } else if (rc == NGX_ERROR) {
+            /* send failed, keep the value in queue
+             * for retry by timer or exit handler */
+            ngx_log_error(NGX_LOG_WARN, aggregate->log, 0,
+                "statshouse aggregate, error flush stat, keep in queue");
+
+            break;
         }
+
+        /* NGX_DECLINED: undeliverable stat (too big or no buf), drop it */
 
         ngx_queue_remove(queue);
 
@@ -245,10 +255,18 @@ ngx_statshouse_aggregate_process(ngx_statshouse_aggregate_t *aggregate, ngx_msec
         "statshouse aggregate, flush %d stats", count);
 
     if (count == 0) {
-        return NGX_DECLINED;
+        return rc == NGX_ERROR ? NGX_ERROR : NGX_DECLINED;
     }
 
-    return aggregate->handler(NULL, aggregate->ctx);
+    rc = aggregate->handler(NULL, aggregate->ctx);
+    if (rc != NGX_OK) {
+        /* values are already in the send buffer,
+         * they will be sent by timer or exit handler */
+        ngx_log_error(NGX_LOG_WARN, aggregate->log, 0,
+            "statshouse aggregate, error flush buffer");
+    }
+
+    return rc;
 }
 
 
